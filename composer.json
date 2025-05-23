@@ -1,0 +1,17 @@
+{
+  "name": "archerbyte/php-dbq",
+  "type": "library",
+  "description": "A lightweight and extendable PHP library for MySQL connections and fluent, criteria-based SQL querying.",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Archerbyte\\Dbq\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "archerbyte",
+      "email": "info@archerbyte.dev"
+    }
+  ]
+}
