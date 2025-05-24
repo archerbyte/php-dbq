@@ -7,7 +7,17 @@ use Exception;
 /**
  * Class QB
  * 
- * This class is a query builder to build SQL queries
+ * A query builder class for constructing SQL WHERE conditions dynamically.
+ * Supports logical operators, nested query groups, and common SQL operators.
+ * 
+ * Example usage:
+ * ```php
+ * $qb = new QB();
+ * $qb->add('age', 30, QB::GT)
+ *    ->add('name', 'John', QB::LIKE, QB::AND)
+ *    ->addQB(QB::OR, (new QB())->add('status', 'active'));
+ * $sqlWhere = $qb->build();
+ * ```
  * 
  * @package PHP-DBQ
  * @author archerbyte
@@ -32,8 +42,21 @@ class QB
     public const AND = 'AND';
     public const OR  = 'OR';
 
+    /**
+     * @var array List of conditions and groups for the query builder
+     */
     private array $conditions = [];
 
+    /**
+     * Add a condition to the query builder
+     *
+     * @param string $field The database field/column name
+     * @param mixed $value The value to compare against
+     * @param string $operator SQL comparison operator (default =)
+     * @param string $logic Logical operator to combine with previous conditions (AND/OR)
+     * 
+     * @return self Returns the QB instance for method chaining
+     */
     public function add(string $field, $value, string $operator = self::EQ, string $logic = self::AND): self
     {
         $this->conditions[] = [
@@ -46,6 +69,14 @@ class QB
         return $this;
     }
 
+    /**
+     * Add a nested query builder group with a logical operator
+     *
+     * @param string $logic Logical operator to combine this group (AND/OR)
+     * @param QB $qb A nested QB instance representing a grouped condition set
+     * 
+     * @return self Returns the QB instance for method chaining
+     */
     public function addQB(string $logic, QB $qb): self
     {
         $this->conditions[] = [
@@ -56,6 +87,16 @@ class QB
         return $this;
     }
 
+    /**
+     * Build the SQL query string for the current conditions
+     *
+     * This method generates the SQL WHERE clause parts without the 'WHERE' keyword.
+     * It handles proper escaping and formatting of values and supports nested groups.
+     * 
+     * @throws Exception If a nested QB instance is used as a value, which is invalid
+     * 
+     * @return string The constructed SQL query condition string
+     */
     public function build(): string
     {
         $queryParts = [];
