@@ -179,7 +179,7 @@ class DBQ
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
-    public function selectWithQB(QB $qb, string $table = 'your_table')
+    public function selectWithQB(string $table, QB $qb)
     {
         $whereClause = $qb->build();
         $query = "SELECT * FROM {$table} WHERE {$whereClause}";

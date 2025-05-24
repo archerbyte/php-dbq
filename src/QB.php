@@ -16,9 +16,25 @@ use Exception;
  */
 class QB
 {
+    public const EQ       = '=';
+    public const NEQ      = '!=';
+    public const GT       = '>';
+    public const GTE      = '>=';
+    public const LT       = '<';
+    public const LTE      = '<=';
+    public const LIKE     = 'LIKE';
+    public const NOT_LIKE = 'NOT LIKE';
+    public const IN       = 'IN';
+    public const NOT_IN   = 'NOT IN';
+    public const IS_NULL  = 'IS NULL';
+    public const IS_NOT_NULL = 'IS NOT NULL';
+
+    public const AND = 'AND';
+    public const OR  = 'OR';
+
     private array $conditions = [];
 
-    public function add(string $field, $value, string $operator = '=', string $logic = 'AND'): self
+    public function add(string $field, $value, string $operator = self::EQ, string $logic = self::AND): self
     {
         $this->conditions[] = [
             'type'     => 'condition',
@@ -30,7 +46,6 @@ class QB
         return $this;
     }
 
-
     public function addQB(string $logic, QB $qb): self
     {
         $this->conditions[] = [
@@ -40,7 +55,6 @@ class QB
         ];
         return $this;
     }
-
 
     public function build(): string
     {
@@ -53,21 +67,24 @@ class QB
                 $value = $condition['value'];
 
                 if ($value instanceof QB) {
-                    throw new \Exception("Invalid QB usage: Nested QB passed as value.");
+                    throw new Exception("Invalid QB usage: Nested QB passed as value.");
                 }
 
-                $value = is_numeric($value) ? $value : "'" . addslashes($value) . "'";
-
-                if ($index > 0) {
-                    $queryParts[] = "{$condition['logic']} {$field} {$operator} {$value}";
+                if (in_array($operator, [self::IS_NULL, self::IS_NOT_NULL])) {
+                    $clause = "{$field} {$operator}";
+                } elseif (in_array($operator, [self::IN, self::NOT_IN]) && is_array($value)) {
+                    $escaped = array_map(fn($v) => is_numeric($v) ? $v : "'" . addslashes($v) . "'", $value);
+                    $clause = "{$field} {$operator} (" . implode(", ", $escaped) . ")";
                 } else {
-                    $queryParts[] = "{$field} {$operator} {$value}";
+                    $value = is_numeric($value) ? $value : "'" . addslashes($value) . "'";
+                    $clause = "{$field} {$operator} {$value}";
                 }
+
+                $queryParts[] = $index > 0 ? "{$condition['logic']} {$clause}" : $clause;
             } elseif ($condition['type'] === 'group') {
                 $logic = $condition['logic'];
                 $subQB = $condition['qb'];
                 $groupSql = $subQB->build();
-
                 $queryParts[] = "{$logic} ({$groupSql})";
             }
         }
