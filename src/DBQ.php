@@ -19,10 +19,12 @@ class DBQ
     private $connection;
     private $databaseType;
     private $query;
+    private $databaseName;
 
     public function connectMySQL($host = "localhost", $database, $user = "root", $password, $port = 3306, $charset = "utf8mb4", $options = [])
     {
         $this->databaseType = "MySQL";
+        $this->databaseName = $database;
 
         $options = $options ?? [
             \PDO::ATTR_ERRMODE            => \PDO::ERRMODE_EXCEPTION,
@@ -45,7 +47,7 @@ class DBQ
             if ($this->databaseType === "MySQL") {
                 $stmt = $this->connection->query("SHOW TABLES");
 
-                $tables = $stmt->fetchAll();
+                $tables = $stmt->fetchAll(\PDO::FETCH_NUM);
 
                 return $tables;
             }
@@ -58,7 +60,7 @@ class DBQ
     /**
      * @param DBAttribute[] $attributes
      */
-    public function createTable(string $tableName, array $attributes):bool
+    public function createTable(string $tableName, array $attributes): bool
     {
         try {
             if ($this->databaseType === "MySQL") {
@@ -112,5 +114,32 @@ class DBQ
         } catch (\PDOException $e) {
             throw new \Exception($e->getMessage());
         }
+    }
+
+    /**
+     * @param $data Array<object>|obect
+     */
+    public function insert(string $table, array $data)
+    {
+        $tables = $this->getTables();
+
+        if (!in_array($table, array_column($tables, 0))) {
+            throw new \Exception("This table does not exist in the database");
+        }
+
+        $columns = array_keys($data);
+        $placeholders = array_map(fn($col) => ':' . $col, $columns);
+
+        $attributes = implode(', ', $columns);
+        $values = implode(', ', $placeholders);
+
+        $query = "INSERT INTO {$table} ({$attributes}) VALUES ({$values})";
+
+        $stmt = $this->connection->prepare($query);
+        foreach ($data as $key => $value) {
+            $stmt->bindValue(":$key", $value);
+        }
+
+        $stmt->execute();
     }
 }
