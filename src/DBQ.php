@@ -18,6 +18,7 @@ class DBQ
 {
     private $connection;
     private $databaseType;
+    private $query;
 
     public function connectMySQL($host = "localhost", $database, $user = "root", $password, $port = 3306, $charset = "utf8mb4", $options = [])
     {
@@ -54,15 +55,62 @@ class DBQ
         }
     }
 
-    public function query(){
+    /**
+     * @param DBAttribute[] $attributes
+     */
+    public function createTable(string $tableName, array $attributes):bool
+    {
+        try {
+            if ($this->databaseType === "MySQL") {
+                $attributeQuery = "";
+                foreach ($attributes as $attribute) {
+                    $attributeQuery .= ("{$attribute->getName()} {$attribute->getType()}({$attribute->getLength()})");
 
+                    if ($attribute->isPrimaryKey() && $attribute->isNullable()) {
+                        throw new \Exception("Primary keys cannot be nullable");
+                    }
+
+                    if ($attribute->isPrimaryKey()) {
+                        $attributeQuery .= " PRIMARY KEY AUTO_INCREMENT";
+                    } elseif ($attribute->isNullable()) {
+                        $attributeQuery .= " NULL";
+                    } else {
+                        $attributeQuery .= " NOT NULL";
+                    }
+
+                    $attributeQuery .= ",\n";
+                }
+                $attributeQuery = substr($attributeQuery, 0, -2);
+                $query = "CREATE TABLE IF NOT EXISTS {$tableName} ({$attributeQuery});";
+
+                return $this->connection->exec($query) !== false;
+            }
+            return false;
+        } catch (\PDOException $e) {
+            throw new \Exception($e->getMessage());
+        }
     }
 
-    public function queryWithQB($qb){
-        
+    public function query($query)
+    {
+        $this->query = $query;
+        return $this;
     }
 
-    public function exec(){
+    public function queryWithQB($qb) {}
 
+    public function exec()
+    {
+        try {
+            if ($this->databaseType === "MySQL") {
+                $stmt = $this->connection->query($this->query);
+                $result = $stmt->fetchAll();
+
+                return $result;
+            }
+            return [];
+        } catch (\PDOException $e) {
+            throw new \Exception($e->getMessage());
+        }
     }
 }
