@@ -4,7 +4,7 @@ namespace archerbyte;
 
 
 /**
- * Class Api
+ * Class DBAttribute
  * 
  * This class handles the request for sql database queries
  * 

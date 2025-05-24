@@ -5,7 +5,7 @@ namespace archerbyte;
 use Exception;
 
 /**
- * Class Api
+ * Class DBQ
  * 
  * This class handles the request for sql database queries
  * 
@@ -177,5 +177,12 @@ class DBQ
         $stmt->execute();
 
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    public function selectWithQB(QB $qb, string $table = 'your_table')
+    {
+        $whereClause = $qb->build();
+        $query = "SELECT * FROM {$table} WHERE {$whereClause}";
+        return $this->query($query)->exec();
     }
 }
