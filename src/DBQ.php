@@ -99,14 +99,15 @@ class DBQ
         return $this;
     }
 
-    public function queryWithQB($qb) {}
-
+    /**
+     * 
+     */
     public function exec()
     {
         try {
             if ($this->databaseType === "MySQL") {
                 $stmt = $this->connection->query($this->query);
-                $result = $stmt->fetchAll();
+                $result = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
                 return $result;
             }
@@ -116,16 +117,21 @@ class DBQ
         }
     }
 
-    /**
-     * @param $data Array<object>|obect
-     */
-    public function insert(string $table, array $data)
+    public function validateTableExistence($table)
     {
         $tables = $this->getTables();
 
         if (!in_array($table, array_column($tables, 0))) {
             throw new \Exception("This table does not exist in the database");
         }
+    }
+
+    /**
+     * @param $data Array<object>|obect
+     */
+    public function insert(string $table, array $data)
+    {
+        $this->validateTableExistence($table);
 
         $columns = array_keys($data);
         $placeholders = array_map(fn($col) => ':' . $col, $columns);
@@ -141,5 +147,35 @@ class DBQ
         }
 
         $stmt->execute();
+    }
+
+
+    public function select(string $table, array $attributes = [], int $start = 0, int $end = 100)
+    {
+        $this->validateTableExistence($table);
+
+        $limit = $end - $start;
+
+        if ($limit <= 0) {
+            throw new \InvalidArgumentException("End must be greater than start.");
+        }
+
+        $columns = '*';
+        if (!empty($attributes)) {
+            foreach ($attributes as $attr) {
+                if (!preg_match('/^[a-zA-Z0-9_]+$/', $attr)) {
+                    throw new \InvalidArgumentException("Invalid column name: {$attr}");
+                }
+            }
+            $columns = implode(', ', $attributes);
+        }
+
+        $query = "SELECT {$columns} FROM {$table} LIMIT :limit OFFSET :offset";
+        $stmt = $this->connection->prepare($query);
+        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $start, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 }
